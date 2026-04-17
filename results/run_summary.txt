@@ -1,0 +1,27 @@
+Project pipeline completed successfully.
+Dataset: /Users/gideon/School/Thesis2/project/dataset/recruitment.csv
+Results directory: /Users/gideon/School/Thesis2/project/results
+
+Generated files:
+- baseline_metrics.csv
+- baseline_group_metrics.csv
+- per_run_metrics.csv
+- summary_stats.csv
+- paired_ttests.csv
+- fairness_main.png
+- accuracy_secondary.png
+
+Baseline models:
+             model  accuracy       f1  roc_auc
+LogisticRegression  0.812593 0.000000 0.555263
+         NeuralNet  0.803333 0.031022 0.523804
+      RandomForest  0.809074 0.005786 0.533791
+
+Mitigation summary:
+             model   variant  accuracy_mean  accuracy_std  DPD_mean  DPD_std  EOD_mean  EOD_std
+LogisticRegression      base       0.812593      0.000000  0.000000 0.000000  0.000000 0.000000
+LogisticRegression mitigated       0.812593      0.000000  0.000000 0.000000  0.000000 0.000000
+         NeuralNet      base       0.808963      0.003817  0.004128 0.001694  0.007174 0.005369
+         NeuralNet mitigated       0.812444      0.000356  0.000676 0.000798  0.001626 0.002253
+      RandomForest      base       0.809333      0.001002  0.002318 0.001310  0.008240 0.004303
+      RandomForest mitigated       0.812593      0.000000  0.000000 0.000000  0.000000 0.000000
