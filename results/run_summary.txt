@@ -24,73 +24,73 @@ LogisticRegression     0.6209  0.807305   0.606293 0.636323 0.620945 0.853080 0.
           post = balanced weights + group-specific threshold opt.
 
   LogisticRegression
-    [in_process ] acc=0.8066±0.0041  f1=0.6114±0.0074  auc=0.8480±0.0033  DI=0.1892±0.0094  DPD=0.2750±0.0062  EOD=0.3637±0.0155
-    [post       ] acc=0.7869±0.0170  f1=0.5269±0.0539  auc=0.8480±0.0033  DI=0.8363±0.0763  DPD=0.0401±0.0279  EOD=0.0611±0.0339
-    [pre        ] acc=0.8080±0.0038  f1=0.6146±0.0064  auc=0.8480±0.0032  DI=0.1807±0.0101  DPD=0.2792±0.0076  EOD=0.3713±0.0176
+    [in_process ] acc=0.8068±0.0052  f1=0.6117±0.0088  auc=0.8479±0.0036  DI=0.2564±0.0132  DPD=0.2446±0.0067  EOD=0.2852±0.0177
+    [post       ] acc=0.7789±0.0218  f1=0.5519±0.0470  auc=0.8479±0.0036  DI=0.8103±0.0458  DPD=0.0543±0.0289  EOD=0.0442±0.0281
+    [pre        ] acc=0.8031±0.0051  f1=0.6048±0.0086  auc=0.8444±0.0040  DI=0.4130±0.0198  DPD=0.1814±0.0073  EOD=0.1782±0.0280
 
   NeuralNet
-    [in_process ] acc=0.8149±0.0060  f1=0.6268±0.0054  auc=0.8619±0.0021  DI=0.1532±0.0287  DPD=0.2897±0.0223  EOD=0.4047±0.0412
-    [post       ] acc=0.7923±0.0162  f1=0.5694±0.0487  auc=0.8619±0.0021  DI=0.8114±0.1031  DPD=0.0534±0.0381  EOD=0.0750±0.0553
-    [pre        ] acc=0.8085±0.0113  f1=0.6271±0.0089  auc=0.8621±0.0020  DI=0.1776±0.0478  DPD=0.2967±0.0259  EOD=0.3849±0.0484
+    [in_process ] acc=0.8088±0.0072  f1=0.6234±0.0073  auc=0.8594±0.0027  DI=0.3244±0.0331  DPD=0.2248±0.0213  EOD=0.2321±0.0439
+    [post       ] acc=0.7741±0.0320  f1=0.5782±0.0419  auc=0.8594±0.0027  DI=0.8607±0.0805  DPD=0.0412±0.0272  EOD=0.0845±0.0372
+    [pre        ] acc=0.8079±0.0045  f1=0.6212±0.0068  auc=0.8581±0.0042  DI=0.4120±0.0230  DPD=0.1886±0.0162  EOD=0.1596±0.0292
 
   RandomForest
-    [in_process ] acc=0.8068±0.0031  f1=0.6194±0.0047  auc=0.8427±0.0052  DI=0.2014±0.0170  DPD=0.2802±0.0165  EOD=0.3319±0.0322
-    [post       ] acc=0.8068±0.0029  f1=0.5073±0.0237  auc=0.8427±0.0052  DI=0.8179±0.0862  DPD=0.0287±0.0142  EOD=0.0750±0.0375
-    [pre        ] acc=0.8111±0.0031  f1=0.6183±0.0060  auc=0.8457±0.0031  DI=0.2344±0.0138  DPD=0.2516±0.0113  EOD=0.2998±0.0317
+    [in_process ] acc=0.8106±0.0035  f1=0.6169±0.0067  auc=0.8439±0.0029  DI=0.2673±0.0261  DPD=0.2372±0.0162  EOD=0.2680±0.0475
+    [post       ] acc=0.8037±0.0034  f1=0.5241±0.0280  auc=0.8439±0.0029  DI=0.8036±0.0382  DPD=0.0343±0.0072  EOD=0.0711±0.0287
+    [pre        ] acc=0.8021±0.0031  f1=0.6070±0.0040  auc=0.8347±0.0046  DI=0.3207±0.0176  DPD=0.2229±0.0082  EOD=0.2388±0.0313
 
 ── Paired t-tests (pre vs later phases) ───────────────────────────────
              model        comparison            metric  pre_mean  comp_mean  mean_diff     t_stat  p_value
-LogisticRegression pre_vs_in_process                DI  0.180687   0.189165   0.008478  -8.671314 0.000973
-LogisticRegression pre_vs_in_process               DPD  0.279230   0.275034  -0.004195   3.908843 0.017411
-LogisticRegression pre_vs_in_process               EOD  0.371272   0.363664  -0.007609   2.849436 0.046422
-LogisticRegression pre_vs_in_process          accuracy  0.808035   0.806552  -0.001483   4.719949 0.009172
-LogisticRegression pre_vs_in_process balanced_accuracy  0.744070   0.741917  -0.002152   3.588473 0.022993
-LogisticRegression pre_vs_in_process                f1  0.614605   0.611441  -0.003163   3.966548 0.016587
-LogisticRegression pre_vs_in_process         precision  0.612245   0.609349  -0.002896   4.149681 0.014264
-LogisticRegression pre_vs_in_process            recall  0.617135   0.613655  -0.003481   2.499281 0.066818
-LogisticRegression pre_vs_in_process           roc_auc  0.848033   0.847953  -0.000080   1.447194 0.221396
-LogisticRegression       pre_vs_post                DI  0.180687   0.836278   0.655591 -19.263157 0.000043
-LogisticRegression       pre_vs_post               DPD  0.279230   0.040126  -0.239104  16.032607 0.000089
-LogisticRegression       pre_vs_post               EOD  0.371272   0.061051  -0.310222  19.263746 0.000043
-LogisticRegression       pre_vs_post          accuracy  0.808035   0.786873  -0.021162   2.545007 0.063642
-LogisticRegression       pre_vs_post balanced_accuracy  0.744070   0.688491  -0.055578   3.109375 0.035894
-LogisticRegression       pre_vs_post                f1  0.614605   0.526944  -0.087661   3.537264 0.024073
-LogisticRegression       pre_vs_post         precision  0.612245   0.603652  -0.008593   0.280234 0.793194
-LogisticRegression       pre_vs_post            recall  0.617135   0.493262  -0.123873   1.840808 0.139468
-LogisticRegression       pre_vs_post           roc_auc  0.848033   0.847953  -0.000080   1.447194 0.221396
-         NeuralNet pre_vs_in_process                DI  0.177641   0.153240  -0.024401   0.890742 0.423403
-         NeuralNet pre_vs_in_process               DPD  0.296737   0.289664  -0.007073   0.454563 0.672999
-         NeuralNet pre_vs_in_process               EOD  0.384880   0.404728   0.019848  -0.984053 0.380802
-         NeuralNet pre_vs_in_process          accuracy  0.808456   0.814898   0.006442  -0.907214 0.415605
-         NeuralNet pre_vs_in_process balanced_accuracy  0.755653   0.751952  -0.003701   0.656711 0.547229
-         NeuralNet pre_vs_in_process                f1  0.627149   0.626812  -0.000337   0.129644 0.903106
-         NeuralNet pre_vs_in_process         precision  0.610634   0.628208   0.017574  -0.769578 0.484477
-         NeuralNet pre_vs_in_process            recall  0.650870   0.627041  -0.023829   0.774315 0.481966
-         NeuralNet pre_vs_in_process           roc_auc  0.862148   0.861890  -0.000258   1.091225 0.336499
-         NeuralNet       pre_vs_post                DI  0.177641   0.811399   0.633758 -11.863258 0.000289
-         NeuralNet       pre_vs_post               DPD  0.296737   0.053355  -0.243383  10.692425 0.000433
-         NeuralNet       pre_vs_post               EOD  0.384880   0.075048  -0.309831  12.036641 0.000273
-         NeuralNet       pre_vs_post          accuracy  0.808456   0.792319  -0.016137   1.727733 0.159104
-         NeuralNet       pre_vs_post balanced_accuracy  0.755653   0.717052  -0.038601   1.943690 0.123851
-         NeuralNet       pre_vs_post                f1  0.627149   0.569414  -0.057735   2.385493 0.075537
-         NeuralNet       pre_vs_post         precision  0.610634   0.602180  -0.008454   0.220120 0.836556
-         NeuralNet       pre_vs_post            recall  0.650870   0.567693  -0.083177   1.109006 0.329612
-         NeuralNet       pre_vs_post           roc_auc  0.862148   0.861890  -0.000258   1.091225 0.336499
-      RandomForest pre_vs_in_process                DI  0.234447   0.201440  -0.033007   7.855267 0.001419
-      RandomForest pre_vs_in_process               DPD  0.251603   0.280176   0.028573  -6.489145 0.002908
-      RandomForest pre_vs_in_process               EOD  0.299781   0.331880   0.032099 -10.198449 0.000521
-      RandomForest pre_vs_in_process          accuracy  0.811112   0.806796  -0.004317   2.009402 0.114877
-      RandomForest pre_vs_in_process balanced_accuracy  0.745996   0.748867   0.002871  -2.233374 0.089276
-      RandomForest pre_vs_in_process                f1  0.618263   0.619395   0.001132  -0.596489 0.582966
-      RandomForest pre_vs_in_process         precision  0.619996   0.605827  -0.014170   2.364558 0.077278
-      RandomForest pre_vs_in_process            recall  0.616778   0.633913   0.017135  -3.157955 0.034251
-      RandomForest pre_vs_in_process           roc_auc  0.845704   0.842722  -0.002982   2.943617 0.042237
-      RandomForest       pre_vs_post                DI  0.234447   0.817873   0.583426 -15.569294 0.000099
-      RandomForest       pre_vs_post               DPD  0.251603   0.028707  -0.222896  42.489930 0.000002
-      RandomForest       pre_vs_post               EOD  0.299781   0.074955  -0.224827   7.469534 0.001717
-      RandomForest       pre_vs_post          accuracy  0.811112   0.806774  -0.004339   2.152547 0.097702
-      RandomForest       pre_vs_post balanced_accuracy  0.745996   0.671401  -0.074595  10.768329 0.000422
-      RandomForest       pre_vs_post                f1  0.618263   0.507302  -0.110961   9.312611 0.000740
-      RandomForest       pre_vs_post         precision  0.619996   0.693318   0.073321  -4.277764 0.012870
-      RandomForest       pre_vs_post            recall  0.616778   0.402767  -0.214012   9.759626 0.000617
-      RandomForest       pre_vs_post           roc_auc  0.845704   0.842722  -0.002982   2.943617 0.042237
+LogisticRegression pre_vs_in_process                DI  0.413008   0.256396  -0.156612  36.038309 0.000004
+LogisticRegression pre_vs_in_process               DPD  0.181378   0.244574   0.063196 -38.943650 0.000003
+LogisticRegression pre_vs_in_process               EOD  0.178187   0.285241   0.107054 -19.145158 0.000044
+LogisticRegression pre_vs_in_process          accuracy  0.803143   0.806818   0.003675  -8.163386 0.001226
+LogisticRegression pre_vs_in_process balanced_accuracy  0.737527   0.742004   0.004477 -22.109001 0.000025
+LogisticRegression pre_vs_in_process                f1  0.604803   0.611681   0.006878 -41.487306 0.000002
+LogisticRegression pre_vs_in_process         precision  0.602526   0.610106   0.007580  -5.505301 0.005310
+LogisticRegression pre_vs_in_process            recall  0.607318   0.613387   0.006069  -4.245856 0.013202
+LogisticRegression pre_vs_in_process           roc_auc  0.844376   0.847940   0.003564 -17.625738 0.000061
+LogisticRegression       pre_vs_post                DI  0.413008   0.810284   0.397276 -25.283679 0.000015
+LogisticRegression       pre_vs_post               DPD  0.181378   0.054258  -0.127120  11.337842 0.000345
+LogisticRegression       pre_vs_post               EOD  0.178187   0.044229  -0.133957   7.762816 0.001484
+LogisticRegression       pre_vs_post          accuracy  0.803143   0.778926  -0.024217   2.107675 0.102760
+LogisticRegression       pre_vs_post balanced_accuracy  0.737527   0.706921  -0.030606   1.892805 0.131325
+LogisticRegression       pre_vs_post                f1  0.604803   0.551862  -0.052941   2.614165 0.059161
+LogisticRegression       pre_vs_post         precision  0.602526   0.573722  -0.028804   0.841295 0.447537
+LogisticRegression       pre_vs_post            recall  0.607318   0.564034  -0.043284   0.634229 0.560390
+LogisticRegression       pre_vs_post           roc_auc  0.844376   0.847940   0.003564 -17.625738 0.000061
+         NeuralNet pre_vs_in_process                DI  0.412033   0.324418  -0.087615   5.652939 0.004825
+         NeuralNet pre_vs_in_process               DPD  0.188566   0.224758   0.036192  -5.712194 0.004646
+         NeuralNet pre_vs_in_process               EOD  0.159644   0.232096   0.072452  -7.055523 0.002128
+         NeuralNet pre_vs_in_process          accuracy  0.807925   0.808766   0.000841  -0.195726 0.854366
+         NeuralNet pre_vs_in_process balanced_accuracy  0.750066   0.751822   0.001755  -0.396085 0.712262
+         NeuralNet pre_vs_in_process                f1  0.621216   0.623376   0.002160  -0.694150 0.525794
+         NeuralNet pre_vs_in_process         precision  0.608548   0.611386   0.002838  -0.187344 0.860510
+         NeuralNet pre_vs_in_process            recall  0.635252   0.638822   0.003570  -0.166652 0.875729
+         NeuralNet pre_vs_in_process           roc_auc  0.858091   0.859429   0.001339  -1.466564 0.216384
+         NeuralNet       pre_vs_post                DI  0.412033   0.860695   0.448663 -12.276182 0.000253
+         NeuralNet       pre_vs_post               DPD  0.188566   0.041175  -0.147391  15.350447 0.000105
+         NeuralNet       pre_vs_post               EOD  0.159644   0.084457  -0.075188   3.062440 0.037569
+         NeuralNet       pre_vs_post          accuracy  0.807925   0.774079  -0.033846   2.156274 0.097295
+         NeuralNet       pre_vs_post balanced_accuracy  0.750066   0.727771  -0.022296   1.838414 0.139855
+         NeuralNet       pre_vs_post                f1  0.621216   0.578190  -0.043026   2.630320 0.058167
+         NeuralNet       pre_vs_post         precision  0.608548   0.558996  -0.049551   1.393520 0.235901
+         NeuralNet       pre_vs_post            recall  0.635252   0.635877   0.000625  -0.010658 0.992007
+         NeuralNet       pre_vs_post           roc_auc  0.858091   0.859429   0.001339  -1.466564 0.216384
+      RandomForest pre_vs_in_process                DI  0.320711   0.267252  -0.053459   5.726560 0.004603
+      RandomForest pre_vs_in_process               DPD  0.222874   0.237223   0.014349  -3.903549 0.017489
+      RandomForest pre_vs_in_process               EOD  0.238845   0.268024   0.029179  -2.798778 0.048872
+      RandomForest pre_vs_in_process          accuracy  0.802059   0.810625   0.008567  -3.881370 0.017821
+      RandomForest pre_vs_in_process balanced_accuracy  0.739856   0.745044   0.005188  -3.087406 0.036667
+      RandomForest pre_vs_in_process                f1  0.607034   0.616949   0.009915  -4.099016 0.014865
+      RandomForest pre_vs_in_process         precision  0.598149   0.619167   0.021018  -3.521409 0.024419
+      RandomForest pre_vs_in_process            recall  0.616421   0.614904  -0.001517   0.277369 0.795242
+      RandomForest pre_vs_in_process           roc_auc  0.834700   0.843855   0.009154 -11.877485 0.000288
+      RandomForest       pre_vs_post                DI  0.320711   0.803619   0.482909 -40.946368 0.000002
+      RandomForest       pre_vs_post               DPD  0.222874   0.034309  -0.188565  41.500884 0.000002
+      RandomForest       pre_vs_post               EOD  0.238845   0.071115  -0.167730   6.430571 0.003007
+      RandomForest       pre_vs_post          accuracy  0.802059   0.803719   0.001660  -0.621663 0.567841
+      RandomForest       pre_vs_post balanced_accuracy  0.739856   0.681272  -0.058585   8.273241 0.001165
+      RandomForest       pre_vs_post                f1  0.607034   0.524055  -0.082979   6.858470 0.002366
+      RandomForest       pre_vs_post         precision  0.598149   0.661389   0.063240  -3.178465 0.033584
+      RandomForest       pre_vs_post            recall  0.616421   0.438286  -0.178135   7.060744 0.002122
+      RandomForest       pre_vs_post           roc_auc  0.834700   0.843855   0.009154 -11.877485 0.000288

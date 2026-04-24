@@ -11,14 +11,93 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
-from sklearn.utils.class_weight import compute_sample_weight
+from imblearn.over_sampling import SMOTE
 
 TARGET_POS_RATE = 0.25
 SEEDS = [42, 43, 44, 45, 46]
+LAMBDA = 1.0   # fairness penalty weight for Algorithm 2
+N_ITER = 3     # iterations for Algorithm 2 fairness-constrained training
 
-# Mitigation phases tracked at each seed run.
 VARIANTS = ["pre", "in_process", "post"]
-VARIANT_LABEL = {"pre": "Pre-mitigation", "in_process": "In-process", "post": "Post-process"}
+VARIANT_LABEL = {
+    "pre":        "Pre-processing (Reweighing + SMOTE)",
+    "in_process": f"In-processing (Fairness-Constrained, λ={LAMBDA})",
+    "post":       "Post-processing (Group Threshold Opt.)",
+}
+
+
+def compute_reweighing_weights(y: np.ndarray, sensitive: np.ndarray) -> np.ndarray:
+    """Kamiran & Calders (2012): w(a,y) = P(A=a)*P(Y=y) / P(A=a,Y=y)"""
+    weights = np.ones(len(y), dtype=float)
+    for g in np.unique(sensitive):
+        for label in np.unique(y):
+            mask = (sensitive == g) & (y == label)
+            p_a = float((sensitive == g).mean())
+            p_y = float((y == label).mean())
+            p_ay = float(mask.mean())
+            if p_ay > 0:
+                weights[mask] = p_a * p_y / p_ay
+    return weights
+
+
+def preprocess_algorithm1(
+    x_df: pd.DataFrame,
+    y_ser: pd.Series,
+    sensitive: pd.Series,
+    seed: int,
+) -> tuple[pd.DataFrame, pd.Series, np.ndarray]:
+    """Algorithm 1: Reweighing (Kamiran & Calders 2012) + SMOTE oversampling."""
+    x_arr = x_df.to_numpy()
+    y_arr = y_ser.to_numpy()
+    s_arr = sensitive.to_numpy()
+
+    rw = compute_reweighing_weights(y_arr, s_arr)
+
+    smote = SMOTE(random_state=seed)
+    x_res, y_res = smote.fit_resample(x_arr, y_arr)
+
+    n_orig = len(x_arr)
+    n_synthetic = len(x_res) - n_orig
+    avg_pos_weight = float(rw[y_arr == 1].mean()) if (y_arr == 1).any() else 1.0
+    weights_res = np.concatenate([rw, np.full(n_synthetic, avg_pos_weight)])
+
+    return pd.DataFrame(x_res, columns=x_df.columns), pd.Series(y_res, name=y_ser.name), weights_res
+
+
+def fairness_constrained_train(
+    model,
+    x_df: pd.DataFrame,
+    y_ser: pd.Series,
+    sensitive: np.ndarray,
+    lambda_param: float = LAMBDA,
+    n_iter: int = N_ITER,
+):
+    """Algorithm 2: Iterative fairness-constrained training with penalty λ."""
+    y_arr = y_ser.to_numpy()
+    weights = np.ones(len(y_arr), dtype=float)
+
+    for _ in range(n_iter):
+        model.fit(x_df, y_arr, sample_weight=weights)
+        y_pred = model.predict(x_df)
+
+        group_rates = {g: float(y_pred[sensitive == g].mean()) for g in np.unique(sensitive)}
+        max_rate = max(group_rates.values())
+        min_rate = min(group_rates.values())
+        disparity = max_rate - min_rate
+
+        if disparity < 0.01:
+            break
+
+        adv_group = max(group_rates, key=group_rates.get)
+        disadv_group = min(group_rates, key=group_rates.get)
+
+        fn_mask = (sensitive == disadv_group) & (y_arr == 1) & (y_pred == 0)
+        fp_mask = (sensitive == adv_group) & (y_arr == 0) & (y_pred == 1)
+        weights[fn_mask] += lambda_param * disparity
+        weights[fp_mask] += lambda_param * disparity
+        weights = weights / weights.mean()
+
+    return model, weights
 
 
 def demographic_parity_difference(y_pred: np.ndarray, sensitive: pd.Series) -> float:
@@ -123,16 +202,18 @@ def run_once(df: pd.DataFrame, seed: int) -> list[dict[str, object]]:
     y_train, y_test = train_df["Selected"], test_df["Selected"]
     sensitive_test = test_df["Gender"]
 
-    sw_fit = compute_sample_weight("balanced", y_fit)
-    sw_train = compute_sample_weight("balanced", y_train)
+    sensitive_fit = fit_df["Gender"].reset_index(drop=True)
+    sensitive_train = train_df["Gender"].reset_index(drop=True)
 
     threshold_grid = np.linspace(0.01, 0.99, 99)
     rows: list[dict[str, object]] = []
 
     for model_name in ["LogisticRegression", "RandomForest", "NeuralNet"]:
 
-        # ── Phase 1: Pre-mitigation ───────────────────────────────────────────
-        # Standard model, no class-weight adjustment — reveals natural bias without intervention.
+        # ── Phase 1: Pre-processing (Algorithm 1: Reweighing + SMOTE) ────────
+        x_res_fit, y_res_fit, w_res_fit = preprocess_algorithm1(x_fit, y_fit, sensitive_fit, seed)
+        x_res_train, y_res_train, w_res_train = preprocess_algorithm1(x_train, y_train, sensitive_train, seed)
+
         if model_name == "LogisticRegression":
             pre_cal_model = LogisticRegression(max_iter=1000, random_state=seed)
             pre_full = LogisticRegression(max_iter=1000, random_state=seed)
@@ -143,9 +224,9 @@ def run_once(df: pd.DataFrame, seed: int) -> list[dict[str, object]]:
             pre_cal_model = MLPClassifier(hidden_layer_sizes=(50,), max_iter=1000, random_state=seed)
             pre_full = MLPClassifier(hidden_layer_sizes=(50,), max_iter=1000, random_state=seed)
 
-        pre_cal_model.fit(x_fit, y_fit)
+        pre_cal_model.fit(x_res_fit, y_res_fit, sample_weight=w_res_fit)
         cal_pre = pre_cal_model.predict_proba(x_cal)[:, 1]
-        pre_full.fit(x_train, y_train)
+        pre_full.fit(x_res_train, y_res_train, sample_weight=w_res_train)
         pre_test = pre_full.predict_proba(x_test)[:, 1]
 
         threshold_pre = float(np.quantile(cal_pre, 1.0 - TARGET_POS_RATE))
@@ -153,31 +234,21 @@ def run_once(df: pd.DataFrame, seed: int) -> list[dict[str, object]]:
         rows.append({"seed": seed, "model": model_name, "variant": "pre",
                      **compute_metrics(y_test, pre_pred, sensitive_test, scores=pre_test)})
 
-        # ── Phase 2: In-process mitigation ───────────────────────────────────
-        # Balanced class weighting during training to counteract class imbalance.
+        # ── Phase 2: In-processing (Algorithm 2: Fairness-Constrained, λ) ────
         if model_name == "LogisticRegression":
-            in_cal_model = LogisticRegression(max_iter=1000, random_state=seed, class_weight="balanced")
-            in_full = LogisticRegression(max_iter=1000, random_state=seed, class_weight="balanced")
-            in_cal_model.fit(x_fit, y_fit)
-            cal_in = in_cal_model.predict_proba(x_cal)[:, 1]
-            in_full.fit(x_train, y_train)
-            in_test = in_full.predict_proba(x_test)[:, 1]
-
+            in_cal_model = LogisticRegression(max_iter=1000, random_state=seed)
+            in_full = LogisticRegression(max_iter=1000, random_state=seed)
         elif model_name == "RandomForest":
-            in_cal_model = RandomForestClassifier(n_estimators=200, random_state=seed, class_weight="balanced_subsample")
-            in_full = RandomForestClassifier(n_estimators=200, random_state=seed, class_weight="balanced_subsample")
-            in_cal_model.fit(x_fit, y_fit)
-            cal_in = in_cal_model.predict_proba(x_cal)[:, 1]
-            in_full.fit(x_train, y_train)
-            in_test = in_full.predict_proba(x_test)[:, 1]
-
+            in_cal_model = RandomForestClassifier(n_estimators=200, random_state=seed)
+            in_full = RandomForestClassifier(n_estimators=200, random_state=seed)
         else:  # NeuralNet
             in_cal_model = MLPClassifier(hidden_layer_sizes=(50,), max_iter=1000, random_state=seed)
             in_full = MLPClassifier(hidden_layer_sizes=(50,), max_iter=1000, random_state=seed)
-            in_cal_model.fit(x_fit, y_fit, sample_weight=sw_fit)
-            cal_in = in_cal_model.predict_proba(x_cal)[:, 1]
-            in_full.fit(x_train, y_train, sample_weight=sw_train)
-            in_test = in_full.predict_proba(x_test)[:, 1]
+
+        fairness_constrained_train(in_cal_model, x_fit, y_fit, sensitive_fit.to_numpy())
+        cal_in = in_cal_model.predict_proba(x_cal)[:, 1]
+        fairness_constrained_train(in_full, x_train, y_train, sensitive_train.to_numpy())
+        in_test = in_full.predict_proba(x_test)[:, 1]
 
         threshold_in = float(np.quantile(cal_in, 1.0 - TARGET_POS_RATE))
         in_pred = (in_test >= threshold_in).astype(int)
@@ -269,10 +340,10 @@ def get_snapshot_predictions(df: pd.DataFrame, seed: int = 42) -> dict:
     x_train, x_test = train_df[features], test_df[features]
     y_train, y_test = train_df["Selected"], test_df["Selected"]
     sensitive_test = test_df["Gender"].reset_index(drop=True)
+    sensitive_fit = fit_df["Gender"].reset_index(drop=True)
+    sensitive_train = train_df["Gender"].reset_index(drop=True)
     y_test = y_test.reset_index(drop=True)
 
-    sw_fit = compute_sample_weight("balanced", y_fit)
-    sw_train = compute_sample_weight("balanced", y_train)
     threshold_grid = np.linspace(0.01, 0.99, 99)
 
     result: dict = {"y_test": y_test, "sensitive_test": sensitive_test, "models": {}}
@@ -280,7 +351,10 @@ def get_snapshot_predictions(df: pd.DataFrame, seed: int = 42) -> dict:
     for model_name in ["LogisticRegression", "RandomForest", "NeuralNet"]:
         preds: dict[str, np.ndarray] = {}
 
-        # Pre-mitigation
+        # Pre-processing: Algorithm 1 (Reweighing + SMOTE)
+        x_res_fit, y_res_fit, w_res_fit = preprocess_algorithm1(x_fit, y_fit, sensitive_fit, seed)
+        x_res_train, y_res_train, w_res_train = preprocess_algorithm1(x_train, y_train, sensitive_train, seed)
+
         if model_name == "LogisticRegression":
             pre_cal = LogisticRegression(max_iter=1000, random_state=seed)
             pre_full = LogisticRegression(max_iter=1000, random_state=seed)
@@ -291,32 +365,26 @@ def get_snapshot_predictions(df: pd.DataFrame, seed: int = 42) -> dict:
             pre_cal = MLPClassifier(hidden_layer_sizes=(50,), max_iter=1000, random_state=seed)
             pre_full = MLPClassifier(hidden_layer_sizes=(50,), max_iter=1000, random_state=seed)
 
-        pre_cal.fit(x_fit, y_fit)
+        pre_cal.fit(x_res_fit, y_res_fit, sample_weight=w_res_fit)
         cal_pre = pre_cal.predict_proba(x_cal)[:, 1]
-        pre_full.fit(x_train, y_train)
+        pre_full.fit(x_res_train, y_res_train, sample_weight=w_res_train)
         pre_test = pre_full.predict_proba(x_test)[:, 1]
         preds["pre"] = (pre_test >= float(np.quantile(cal_pre, 1.0 - TARGET_POS_RATE))).astype(int)
 
-        # In-process mitigation
+        # In-processing: Algorithm 2 (Fairness-Constrained with λ)
         if model_name == "LogisticRegression":
-            in_cal = LogisticRegression(max_iter=1000, random_state=seed, class_weight="balanced")
-            in_full = LogisticRegression(max_iter=1000, random_state=seed, class_weight="balanced")
-            in_cal.fit(x_fit, y_fit)
-            cal_in = in_cal.predict_proba(x_cal)[:, 1]
-            in_full.fit(x_train, y_train)
+            in_cal = LogisticRegression(max_iter=1000, random_state=seed)
+            in_full = LogisticRegression(max_iter=1000, random_state=seed)
         elif model_name == "RandomForest":
-            in_cal = RandomForestClassifier(n_estimators=200, random_state=seed, class_weight="balanced_subsample")
-            in_full = RandomForestClassifier(n_estimators=200, random_state=seed, class_weight="balanced_subsample")
-            in_cal.fit(x_fit, y_fit)
-            cal_in = in_cal.predict_proba(x_cal)[:, 1]
-            in_full.fit(x_train, y_train)
+            in_cal = RandomForestClassifier(n_estimators=200, random_state=seed)
+            in_full = RandomForestClassifier(n_estimators=200, random_state=seed)
         else:
             in_cal = MLPClassifier(hidden_layer_sizes=(50,), max_iter=1000, random_state=seed)
             in_full = MLPClassifier(hidden_layer_sizes=(50,), max_iter=1000, random_state=seed)
-            in_cal.fit(x_fit, y_fit, sample_weight=sw_fit)
-            cal_in = in_cal.predict_proba(x_cal)[:, 1]
-            in_full.fit(x_train, y_train, sample_weight=sw_train)
 
+        fairness_constrained_train(in_cal, x_fit, y_fit, sensitive_fit.to_numpy())
+        cal_in = in_cal.predict_proba(x_cal)[:, 1]
+        fairness_constrained_train(in_full, x_train, y_train, sensitive_train.to_numpy())
         in_test = in_full.predict_proba(x_test)[:, 1]
         preds["in_process"] = (in_test >= float(np.quantile(cal_in, 1.0 - TARGET_POS_RATE))).astype(int)
 

@@ -1,0 +1,197 @@
+Hyperparameters — Full Pipeline
+================================
+Dataset : UCI Adult Income (adult_recruitment.csv)
+Branch  : feature/algorithm1
+
+All hyperparameters used across baseline evaluation, mitigation pipeline,
+and fairness toolkit comparison.
+
+
+══════════════════════════════════════════════════════════════════════
+  DATA SPLITS
+══════════════════════════════════════════════════════════════════════
+
+Parameter                          Value
+---------------------------------  -----------------------------------------
+Test size                          0.20
+Calibration split (of training)    0.25
+Effective split                    60% fit / 20% calibration / 20% test
+Stratification                     Selected × Gender (joint stratify key)
+Seeds (mitigation, 5-seed avg)     42, 43, 44, 45, 46
+Seed (baseline, single run)        42
+
+
+══════════════════════════════════════════════════════════════════════
+  BASELINE MODELS
+══════════════════════════════════════════════════════════════════════
+
+Logistic Regression
+  max_iter        : 1000
+  class_weight    : "balanced"
+  solver          : lbfgs (sklearn default)
+  random_state    : seed
+
+Random Forest
+  n_estimators    : 200
+  class_weight    : "balanced_subsample"
+  oob_score       : True   (used for threshold calibration)
+  random_state    : seed
+
+Neural Network (MLPClassifier)
+  hidden_layer_sizes : (50,)
+  max_iter           : 1000
+  activation         : relu (sklearn default)
+  solver             : adam (sklearn default)
+  learning_rate_init : 0.001 (sklearn default)
+  random_state       : seed
+
+Threshold calibration (all models)
+  Method          : top-quantile on calibration set scores
+  Target positive rate (TARGET_POS_RATE) : 0.25
+  Threshold       : np.quantile(cal_scores, 1.0 - 0.25) = 75th percentile
+
+
+══════════════════════════════════════════════════════════════════════
+  MITIGATION MODELS
+══════════════════════════════════════════════════════════════════════
+
+Same architectures as baseline but WITHOUT class_weight (fairness is
+handled explicitly by Algorithms 1 and 2 instead).
+
+Logistic Regression
+  max_iter        : 1000
+  class_weight    : None
+  solver          : lbfgs (sklearn default)
+  random_state    : seed
+
+Random Forest
+  n_estimators    : 200
+  class_weight    : None
+  oob_score       : False
+  random_state    : seed
+
+Neural Network (MLPClassifier)
+  hidden_layer_sizes : (50,)
+  max_iter           : 1000
+  activation         : relu (sklearn default)
+  solver             : adam (sklearn default)
+  learning_rate_init : 0.001 (sklearn default)
+  random_state       : seed
+
+
+══════════════════════════════════════════════════════════════════════
+  ALGORITHM 1 — PRE-PROCESSING (Reweighing + SMOTE)
+══════════════════════════════════════════════════════════════════════
+
+Reference: Kamiran & Calders (2012)
+
+Reweighing
+  Formula         : w(a,y) = P(A=a) * P(Y=y) / P(A=a,Y=y)
+  Sensitive attr  : Gender (0 = Female, 1 = Male)
+  Label           : Selected (0 = not selected, 1 = selected)
+  Applied to      : fit split (60% of data) and full training set
+
+SMOTE (Synthetic Minority Over-sampling Technique)
+  k_neighbors     : 5 (imbalanced-learn default)
+  random_state    : seed
+  Applied to      : reweighed fit split and full training set
+
+Synthetic sample weighting
+  Weight assigned to synthetic samples : mean weight of original
+                                         positive-class samples
+
+
+══════════════════════════════════════════════════════════════════════
+  ALGORITHM 2 — IN-PROCESSING (Fairness-Constrained Training)
+══════════════════════════════════════════════════════════════════════
+
+  λ (lambda, fairness penalty weight)  : 1.0
+  N_ITER (max iterations)              : 3
+  Early stopping threshold             : disparity < 0.01
+  Initial sample weights               : all ones (uniform)
+
+  Per iteration:
+    1. Fit model with current sample weights
+    2. Compute per-group positive rates
+    3. disparity = max_rate − min_rate
+    4. If disparity < 0.01 → stop early
+    5. Upweight false negatives in disadvantaged group (Female):
+         weights[FN_female] += λ * disparity
+    6. Upweight false positives in advantaged group (Male):
+         weights[FP_male]   += λ * disparity
+    7. Normalise: weights = weights / mean(weights)
+
+  Applied to: fit split (for calibration model) and full training set
+
+
+══════════════════════════════════════════════════════════════════════
+  POST-PROCESSING — Group-Specific Threshold Optimisation
+══════════════════════════════════════════════════════════════════════
+
+  Threshold grid    : np.linspace(0.01, 0.99, 99)  [99 candidate thresholds]
+  Search space      : all combinations of thresholds per group (grid²)
+  Optimised on      : calibration set (20% of training, held out)
+
+  Objective function (minimise):
+    di_penalty + EOD + 0.5 * DPD
+
+    where:
+      di_penalty = max(0.0, 0.80 − DI) * 5
+      DI  = min(group_rate) / max(group_rate)
+      EOD = max(|TPR_F − TPR_M|, |FPR_F − FPR_M|)
+      DPD = max(group_rate) − min(group_rate)
+
+  Constraints:
+    min overall positive rate : 0.125  (= TARGET_POS_RATE * 0.5)
+    max overall positive rate : 0.375  (= TARGET_POS_RATE * 1.5)
+
+  Legal DI threshold          : 0.80
+  Target positive rate        : 0.25
+
+
+══════════════════════════════════════════════════════════════════════
+  FAIRNESS TOOLKIT COMPARISON
+══════════════════════════════════════════════════════════════════════
+
+── AIF360 Reweighing (Pre-processing) ───────────────────────────────
+
+  Library         : aif360.algorithms.preprocessing.Reweighing
+  Algorithm       : Reweighing (Kamiran & Calders 2012)
+  Unprivileged    : Gender = 0  (Female)
+  Privileged      : Gender = 1  (Male)
+  Favorable label : 1  (Selected)
+  Unfavorable     : 0  (Not Selected)
+  Note            : AIF360 Reweighing only — no SMOTE applied
+
+── FairLearn ThresholdOptimizer (Post-processing) ────────────────────
+
+  Library         : fairlearn.postprocessing.ThresholdOptimizer
+  constraints     : "demographic_parity"
+  objective       : "accuracy_score"
+  predict_method  : "predict_proba"
+  Note            : Optimises strictly for demographic parity as a hard
+                    constraint; does not penalise EOD or EOD separately.
+
+── Our Pipeline (Post-processing, for comparison) ────────────────────
+
+  Reported values are 5-seed means from summary_stats.csv (post variant).
+  Toolkit label   : "Ours (Post-process)"
+
+
+══════════════════════════════════════════════════════════════════════
+  FAIRNESS METRIC DEFINITIONS
+══════════════════════════════════════════════════════════════════════
+
+DI  (Disparate Impact)
+  DI = min_group_selection_rate / max_group_selection_rate
+  Legal threshold: DI ≥ 0.80  (80% rule, EEOC guidelines)
+
+DPD (Demographic Parity Difference)
+  DPD = max_group_selection_rate − min_group_selection_rate
+  Target: DPD = 0  (perfect parity)
+
+EOD (Equalized Odds Difference)
+  EOD = max(|TPR_F − TPR_M|, |FPR_F − FPR_M|)
+  Target: EOD = 0  (equal true-positive and false-positive rates)
+
+Sensitive attribute : Gender  (0 = Female, 1 = Male)
