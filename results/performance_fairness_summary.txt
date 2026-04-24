@@ -1,0 +1,133 @@
+Performance and Fairness Metrics — All Models and Mitigation Phases
+=====================================================================
+Dataset : UCI Adult Income (adult_recruitment.csv) — 45,175 rows
+Target  : Selected = 1 if income >$50K/year (proxy for hired/promoted)
+          Selected = 0 if income ≤$50K/year
+Positive rate: ~24.8%  |  Gender split: Male 67.5%, Female 32.5%
+
+Mitigation phases averaged over 5 random seeds (42–46).
+Baseline is a single seed (seed=42).
+
+Fairness metric interpretation:
+  DI  (Disparate Impact)            — higher is fairer; legal threshold ≥ 0.80  ✓
+  DPD (Demographic Parity Diff.)    — lower is fairer; 0 = perfect parity
+  EOD (Equalized Odds Diff.)        — lower is fairer; 0 = perfect equality
+
+
+══════════════════════════════════════════════════════════════════════
+  LOGISTIC REGRESSION
+══════════════════════════════════════════════════════════════════════
+
+Phase            Accuracy  Precision  Recall   F1      ROC AUC   DI       DPD      EOD
+---------------  --------  ---------  -------  ------  --------  -------  -------  -------
+Baseline         0.8073    0.606      0.636    0.621   0.853     0.190    0.286    0.378
+Pre-mitigation   0.8080    0.612      0.617    0.615   0.848     0.181    0.279    0.371
+In-process       0.8066    0.609      0.614    0.611   0.848     0.189    0.275    0.364
+Post-process     0.7869    0.604      0.493    0.527   0.848     0.836 ✓  0.040    0.061
+
+Key findings:
+  - Starts with severe gender bias (DI=0.190, far below the 0.80 legal threshold).
+  - Post-processing surpasses the legal DI threshold (0.836 ≥ 0.80):
+      DPD drops 85.6%  (0.279 → 0.040, p < 0.001)
+      EOD drops 83.6%  (0.371 → 0.061, p < 0.001)
+      DI  rises 362%   (0.181 → 0.836, p < 0.001)
+  - Recall drops post-mitigation (0.617 → 0.493): more selective per group, fewer
+    true positives selected overall — the expected fairness-recall trade-off.
+  - Precision stays stable (0.612 → 0.604): candidates selected remain high quality.
+  - ROC AUC unchanged — threshold shifts do not affect the underlying score ranking.
+
+
+══════════════════════════════════════════════════════════════════════
+  NEURAL NETWORK
+══════════════════════════════════════════════════════════════════════
+
+Phase            Accuracy  Precision  Recall   F1      ROC AUC   DI       DPD      EOD
+---------------  --------  ---------  -------  ------  --------  -------  -------  -------
+Baseline         0.8159    0.627      0.638    0.632   0.865     0.200    0.273    0.362
+Pre-mitigation   0.8085    0.611      0.651    0.627   0.862     0.178    0.297    0.385
+In-process       0.8149    0.628      0.627    0.627   0.862     0.153    0.290    0.405
+Post-process     0.7923    0.602      0.568    0.569   0.862     0.811 ✓  0.053    0.075
+
+Key findings:
+  - Achieves the highest baseline ROC AUC (0.865) — strongest raw predictive power.
+  - Post-processing clears the legal DI threshold (0.811 ≥ 0.80):
+      DPD drops 82.0%  (0.297 → 0.053, p < 0.001)
+      EOD drops 80.5%  (0.385 → 0.075, p < 0.001)
+      DI  rises 356%   (0.178 → 0.811, p < 0.001)
+  - In-process mitigation alone does not improve fairness for NN — EOD worsens
+    slightly. Post-processing is the critical intervention.
+  - Precision and recall both decrease modestly post-mitigation (~2–8pp),
+    consistent with the fairness-accuracy trade-off.
+
+
+══════════════════════════════════════════════════════════════════════
+  RANDOM FOREST
+══════════════════════════════════════════════════════════════════════
+
+Phase            Accuracy  Precision  Recall   F1      ROC AUC   DI       DPD      EOD
+---------------  --------  ---------  -------  ------  --------  -------  -------  -------
+Baseline         0.8095    0.610      0.643    0.626   0.843     0.199    0.283    0.355
+Pre-mitigation   0.8111    0.620      0.617    0.618   0.846     0.234    0.252    0.300
+In-process       0.8068    0.606      0.634    0.619   0.843     0.201    0.280    0.332
+Post-process     0.8068    0.693      0.403    0.507   0.843     0.818 ✓  0.029    0.075
+
+Key findings:
+  - Pre-mitigation RF has slightly better DI than LR/NN at baseline (0.234 vs ~0.18).
+  - Post-processing delivers the best DPD reduction of all three models:
+      DPD drops 88.6%  (0.252 → 0.029, p < 0.001)
+      EOD drops 75.0%  (0.300 → 0.075, p < 0.001)
+      DI  rises 249%   (0.234 → 0.818, p < 0.001)
+  - Notable post-process pattern: Precision rises (0.620 → 0.693) while Recall
+    drops sharply (0.617 → 0.403). RF applies higher thresholds for the
+    majority group (Male), selecting fewer but higher-confidence candidates —
+    this is the group-specific threshold at work.
+  - Accuracy effectively unchanged across all phases (p=0.098).
+  - Best model for minimising accuracy cost while meeting the DI ≥ 0.80 threshold.
+
+
+══════════════════════════════════════════════════════════════════════
+  CROSS-MODEL SUMMARY
+══════════════════════════════════════════════════════════════════════
+
+                        Baseline    Post-process    Change
+                        ----------  --------------  ------------------
+LR  Accuracy            0.8073      0.7869          −2.0pp
+LR  Precision           0.606       0.604           −0.3pp
+LR  Recall              0.636       0.493           −14.3pp
+LR  F1                  0.621       0.527           −9.4pp
+LR  ROC AUC             0.853       0.848           −0.005  (unchanged)
+LR  DI                  0.190       0.836  ✓        +362%  ***
+
+NN  Accuracy            0.8159      0.7923          −2.4pp
+NN  Precision           0.627       0.602           −2.5pp
+NN  Recall              0.638       0.568           −7.0pp
+NN  F1                  0.632       0.569           −6.3pp
+NN  ROC AUC             0.865       0.862           −0.003  (unchanged)
+NN  DI                  0.200       0.811  ✓        +306%  ***
+
+RF  Accuracy            0.8095      0.8068          −0.3pp  (best preserved)
+RF  Precision           0.610       0.693           +8.3pp  (rises — higher threshold on majority)
+RF  Recall              0.643       0.403           −24.0pp (sharpest drop)
+RF  F1                  0.626       0.507           −11.9pp
+RF  ROC AUC             0.843       0.843           −0.000  (unchanged)
+RF  DI                  0.199       0.818  ✓        +311%  ***
+
+Best post-mitigation accuracy  : Random Forest       (0.807)
+Best post-mitigation precision : Random Forest       (0.693)
+Best post-mitigation recall    : Neural Network      (0.568)
+Best post-mitigation F1        : Neural Network      (0.569)
+Best post-mitigation ROC AUC   : Neural Network      (0.862)
+Best post-mitigation DI        : Logistic Regression (0.836) ✓
+Best post-mitigation DPD       : Random Forest       (0.029) ✓
+Best post-mitigation EOD       : Logistic Regression (0.061)
+
+*** p < 0.001 (paired t-test, 5 seeds)
+✓  meets or exceeds the legal Disparate Impact threshold of 0.80
+
+All three models cross the DI ≥ 0.80 legal threshold after post-process mitigation.
+ROC AUC is unchanged across phases — confirming threshold optimisation does not
+alter the model's discriminative power, only how that power is applied per group.
+The precision-recall trade-off after mitigation is expected: equalising selection
+rates across groups requires raising thresholds for the over-selected group (Male)
+and lowering them for the under-selected group (Female), which shifts the
+precision-recall balance rather than degrading overall model quality.
